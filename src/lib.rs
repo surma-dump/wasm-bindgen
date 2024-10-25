@@ -33,14 +33,14 @@ macro_rules! if_std {
 
 macro_rules! externs {
     ($(#[$attr:meta])* extern "C" { $(fn $name:ident($($args:tt)*) -> $ret:ty;)* }) => (
-        #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+        #[cfg(all(target_arch = "wasm32"))]
         $(#[$attr])*
         extern "C" {
             $(fn $name($($args)*) -> $ret;)*
         }
 
         $(
-            #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+            #[cfg(not(all(target_arch = "wasm32")))]
             #[allow(unused_variables)]
             unsafe extern fn $name($($args)*) -> $ret {
                 panic!("function not implemented on non-wasm32 targets")
@@ -1333,18 +1333,9 @@ pub fn anyref_heap_live_count() -> u32 {
 pub trait UnwrapThrowExt<T>: Sized {
     /// Unwrap this `Option` or `Result`, but instead of panicking on failure,
     /// throw an exception to JavaScript.
-    #[cfg_attr(
-        any(
-            debug_assertions,
-            not(all(target_arch = "wasm32", target_os = "unknown"))
-        ),
-        track_caller
-    )]
+    #[cfg_attr(any(debug_assertions, not(all(target_arch = "wasm32"))), track_caller)]
     fn unwrap_throw(self) -> T {
-        if cfg!(all(
-            debug_assertions,
-            all(target_arch = "wasm32", target_os = "unknown")
-        )) {
+        if cfg!(all(debug_assertions, all(target_arch = "wasm32"))) {
             let loc = core::panic::Location::caller();
             let msg = alloc::format!(
                 "called `{}::unwrap_throw()` ({}:{}:{})",
@@ -1362,13 +1353,7 @@ pub trait UnwrapThrowExt<T>: Sized {
     /// Unwrap this container's `T` value, or throw an error to JS with the
     /// given message if the `T` value is unavailable (e.g. an `Option<T>` is
     /// `None`).
-    #[cfg_attr(
-        any(
-            debug_assertions,
-            not(all(target_arch = "wasm32", target_os = "unknown"))
-        ),
-        track_caller
-    )]
+    #[cfg_attr(any(debug_assertions, not(all(target_arch = "wasm32"))), track_caller)]
     fn expect_throw(self, message: &str) -> T;
 }
 
@@ -1376,7 +1361,7 @@ impl<T> UnwrapThrowExt<T> for Option<T> {
     fn unwrap_throw(self) -> T {
         const MSG: &str = "called `Option::unwrap_throw()` on a `None` value";
 
-        if cfg!(all(target_arch = "wasm32", target_os = "unknown")) {
+        if cfg!(all(target_arch = "wasm32")) {
             if let Some(val) = self {
                 val
             } else if cfg!(debug_assertions) {
@@ -1394,7 +1379,7 @@ impl<T> UnwrapThrowExt<T> for Option<T> {
     }
 
     fn expect_throw(self, message: &str) -> T {
-        if cfg!(all(target_arch = "wasm32", target_os = "unknown")) {
+        if cfg!(all(target_arch = "wasm32")) {
             if let Some(val) = self {
                 val
             } else if cfg!(debug_assertions) {
@@ -1424,7 +1409,7 @@ where
     fn unwrap_throw(self) -> T {
         const MSG: &str = "called `Result::unwrap_throw()` on an `Err` value";
 
-        if cfg!(all(target_arch = "wasm32", target_os = "unknown")) {
+        if cfg!(all(target_arch = "wasm32")) {
             match self {
                 Ok(val) => val,
                 Err(err) => {
@@ -1451,7 +1436,7 @@ where
     }
 
     fn expect_throw(self, message: &str) -> T {
-        if cfg!(all(target_arch = "wasm32", target_os = "unknown")) {
+        if cfg!(all(target_arch = "wasm32")) {
             match self {
                 Ok(val) => val,
                 Err(err) => {
